@@ -1,0 +1,59 @@
+The way I installed the rcppbugs on MAC OSX 10.9.5
+First I modified the following lines in the Makeconf file in /Library/Frameworks/R.framework/Resources/etc:
+CC=clang
+CXX=clang++
+
+Then I download the rcppbugs from the CRAN(http://cran.r-project.org/bin/macosx/mavericks/contrib/3.1/rcppbugs_0.1.4.1.tgz)
+I install the package use R CMD
+R CMD INSTALL rcppbugs_0.1.4.1.tgz
+However, it can not works!
+
+I check the error information Library not loaded: "/Library/Frameworks/R.framework/Versions/3.1/Resources/lib/libquadmath.0.dylib" and "libgfortran.3.dylib" could not loaded. so I added the links in the /Library/Frameworks/R.framework/Versions/3.1/Resources/lib/
+cd /Library/Frameworks/R.framework/Versions/3.1/Resources/lib/
+sudo ln -s /usr/local/lib/libgfortran.3.dylib libgfortran.3.dylib
+sudo ln -s /usr/local/lib/libquadmath.0.dylib libquadmath.0.dylib
+After done these things,I reinstall the package. It works!
+> library(rcppbugs)
+> NR <- 1e2L
+> NC <- 2L
+> y <- matrix(rnorm(NR,1) + 10,nr=NR,nc=1L)
+> X <- matrix(nr=NR,nc=NC)
+> X[,1] <- 1
+> X[,2] <- y + rnorm(NR)/2 - 10
+> 
+> ## run a normal linear model w/ lm.fit to check results
+> lm.res <- lm.fit(X,y)
+> print(coef(lm.res))
+ x1        x2 
+ 10.132205  0.780528 
+ > b <- mcmc.normal(rnorm(NC),mu=0,tau=0.0001)
+ > tau.y <- mcmc.gamma(sd(as.vector(y)),alpha=0.1,beta=0.1)
+ > y.hat <- deterministic(function(X,b) { X %*% b }, X, b)
+ > y.lik <- mcmc.normal(y,mu=y.hat,tau=tau.y,observed=TRUE)
+ > m <- create.model(b, tau.y, y.hat, y.lik)
+ > cat("running model...\n")
+ running model...
+ > runtime <- system.time(ans <- run.model(m, iterations=1e5L, burn=1e4L, adapt=1e3L, thin=10L))
+ > print(apply(ans[["b"]],2,mean))
+ [1] 10.1329833  0.7800775
+> print(runtime)
+> sessionInfo()
+R version 3.1.1 (2014-07-10)
+Platform: x86_64-apple-darwin10.8.0 (64-bit)
+
+locale:
+[1] zh_CN.UTF-8/zh_CN.UTF-8/zh_CN.UTF-8/C/zh_CN.UTF-8/zh_CN.UTF-8
+
+attached base packages:
+[1] stats     graphics  grDevices utils     datasets  compiler  methods  
+[8] base     
+
+other attached packages:
+[1] rcppbugs_0.1.4.1 dplyr_0.3.0.1    reshape2_1.4     Rcpp_0.11.3     
+[5] plyr_1.8.1       pipeR_0.3-1     
+
+loaded via a namespace (and not attached):
+[1] assertthat_0.1 DBI_0.3.1      magrittr_1.0.1 parallel_3.1.1 stringr_0.6.2 
+[6] tools_3.1.1
+
+
